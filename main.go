@@ -15,6 +15,10 @@ import (
 	"github.com/slack-go/slack/slackevents"
 )
 
+func init() {
+	setupLogging()
+}
+
 func main() {
 	// Load Config
 	c, err := ConfigFromEnvironment()
@@ -69,13 +73,15 @@ func main() {
 
 		if eventsAPIEvent.Type == slackevents.URLVerification {
 			var r *slackevents.ChallengeResponse
-			err := json.Unmarshal([]byte(body), &r)
-			if err != nil {
+			if err := json.Unmarshal([]byte(body), &r); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "text")
-			w.Write([]byte(r.Challenge))
+			if _, err := w.Write([]byte(r.Challenge)); err != nil {
+				log.Fatalf("HTTP response write failed with: %s\n", err.Error())
+				return
+			}
 			return
 		}
 
@@ -124,5 +130,8 @@ func main() {
 		}
 	})
 	fmt.Println("[INFO] Server listening")
-	http.ListenAndServe(fmt.Sprintf("%s:%s", c.StatsbotHost, c.StatsbotPort), nil)
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", c.StatsbotHost, c.StatsbotPort), nil); err != nil {
+		log.Fatalf("http.ListenAndServe failed with: %s\n", err.Error())
+		return
+	}
 }
