@@ -119,7 +119,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: docker.pkg.github.com/${{ github.repository }}/bot:${{ env.BRANCH_NAME }}-${{ env.SHORT_SHA }}
+          tags: docker.pkg.github.com/${{ github.repository }}/statsbot:${{ env.BRANCH_NAME }}-${{ env.SHORT_SHA }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
