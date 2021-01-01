@@ -70,6 +70,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
       - name: Build
         run: go build
 
@@ -108,9 +109,9 @@ jobs:
       - name: Login to Container Registry
         uses: docker/login-action@v1
         with:
-          registry: ghcr.io
+          registry: docker.pkg.github.com
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.ACCESS_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         id: docker_build
@@ -118,7 +119,7 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ secrets.MAZE_ACR_REGISTRY }}/github-evry-bergen/belron:${{ env.BRANCH_NAME }}-${{ env.SHORT_SHA }}
+          tags: docker.pkg.github.com/${{ github.repository }}:${{ env.BRANCH_NAME }}-${{ env.SHORT_SHA }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
