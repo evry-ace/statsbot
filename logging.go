@@ -7,7 +7,7 @@ import (
 func setupLogging() {
 	c, _ := ConfigFromEnvironment()
 
-	switch c.StatsbotLogLevel {
+	switch c.LogLevel {
 	case "debug":
 		logrus.SetLevel(logrus.DebugLevel)
 	case "info":
@@ -19,17 +19,17 @@ func setupLogging() {
 	case "fatal":
 		logrus.SetLevel(logrus.FatalLevel)
 	default:
-		logrus.WithField("log-level", c.StatsbotLogLevel).Warning("invalid log level. defaulting to info.")
+		logrus.WithField("log-level", c.LogLevel).Warning("invalid log level. defaulting to info.")
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
-	switch c.StatsbotLogFormat {
+	switch c.LogFormat {
 	case "text":
 		logrus.SetFormatter(new(logrus.TextFormatter))
 	case "json":
 		logrus.SetFormatter(new(logrus.JSONFormatter))
 	default:
-		logrus.WithField("log-format", c.StatsbotLogFormat).Warning("invalid log format. defaulting to text.")
+		logrus.WithField("log-format", c.LogFormat).Warning("invalid log format. defaulting to text.")
 		logrus.SetFormatter(new(logrus.TextFormatter))
 	}
 }

@@ -1,15 +1,11 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
-
-	"cloud.google.com/go/civil"
 
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
@@ -98,28 +94,8 @@ func main() {
 				}
 
 			case *slackevents.MessageEvent:
-				ctx := context.TODO()
-				user, err := slackClient.GetUserInfoContext(ctx, ev.User)
-				if err != nil {
-					log.Fatalf("GetUserInfoContext failed with: %s\n", err.Error())
-					return
-				}
-
-				channel, err := slackClient.GetConversationInfoContext(ctx, ev.Channel, true)
-				if err != nil {
-					log.Fatalf("GetConversationInfoContext failed with: %s\n", err.Error())
-					return
-				}
-
-				log.Printf("message event: channel=%s, user=%s\n", channel.Name, user.Name)
-
-				if err := ses.BigqueryInserter.Put(ctx, SlackMessageEvent{
-					Event:    innerEvent.Type,
-					User:     user.Name,
-					Channel:  channel.Name,
-					DateTime: civil.DateTimeOf(time.Now()),
-				}); err != nil {
-					log.Fatalf("bigqueryInserter.Put failed with: %s\n", err.Error())
+				if err := ses.MessageEvent(ev); err != nil {
+					log.Fatalf("MessageEvent failed with: %s\n", err.Error())
 				}
 
 			case *slackevents.ReactionAddedEvent:
@@ -130,7 +106,7 @@ func main() {
 		}
 	})
 	fmt.Println("[INFO] Server listening")
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", c.StatsbotHost, c.StatsbotPort), nil); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", c.Host, c.Port), nil); err != nil {
 		log.Fatalf("http.ListenAndServe failed with: %s\n", err.Error())
 		return
 	}

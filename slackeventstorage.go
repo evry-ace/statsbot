@@ -34,7 +34,7 @@ func (i *SlackMessageEvent) Save() (map[string]bigquery.Value, string, error) {
 
 type SlackEventStorage struct {
 	BigqueryClient   *bigquery.Client
-	BigqueryInserter *bigquery.Inserter
+	bigqueryInserter *bigquery.Inserter
 	slackClient      *slack.Client
 	sentimentClient  *SlackSentiment
 	config           *Config
@@ -63,14 +63,37 @@ func NewSlackEventStorage(
 
 	return &SlackEventStorage{
 		BigqueryClient:   bigqueryClient,
-		BigqueryInserter: bigqueryInserter,
+		bigqueryInserter: bigqueryInserter,
 		slackClient:      slackClient,
 		sentimentClient:  sentimentClient,
 		config:           config,
 	}, nil
 }
 
-func (s SlackEventStorage) MessageEvent(m SlackMessageEvent) error {
+func (s SlackEventStorage) MessageEvent(ev *slackevents.MessageEvent) error {
+	ctx := context.Background()
+
+	user, err := s.slackClient.GetUserInfoContext(ctx, ev.User)
+	if err != nil {
+		return err
+	}
+
+	channel, err := s.slackClient.GetConversationInfoContext(ctx, ev.Channel, true)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("message event: channel=%s, user=%s\n", channel.Name, user.Name)
+
+	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
+		Event:    ev.Type,
+		User:     user.Name,
+		Channel:  channel.Name,
+		DateTime: civil.DateTimeOf(time.Now()),
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -92,18 +115,20 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 		return err
 	}
 
-	// Detects the sentiment of the text.
-	sentiment, err := s.sentimentClient.analyze(ev.Reaction)
-	if err != nil {
-		log.Fatalf("Failed to analyze text: %v", err)
-	}
+	if s.config.EnableSentiment {
+		// Detects the sentiment of the text.
+		sentiment, err := s.sentimentClient.analyze(ev.Reaction)
+		if err != nil {
+			log.Fatalf("Failed to analyze text: %v", err)
+		}
 
-	fmt.Printf("Sentiment score of '%v' is %f\n", ev.Reaction, sentiment.DocumentSentiment.Score)
-	//if sentiment.DocumentSentiment.Score >= 0 {
-	//	fmt.Println("Sentiment: positive")
-	//} else {
-	//	fmt.Println("Sentiment: negative")
-	//}
+		fmt.Printf("Sentiment score of '%v' is %f\n", ev.Reaction, sentiment.DocumentSentiment.Score)
+		//if sentiment.DocumentSentiment.Score >= 0 {
+		//	fmt.Println("Sentiment: positive")
+		//} else {
+		//	fmt.Println("Sentiment: negative")
+		//}
+	}
 
 	fmt.Printf(
 		"Recieved '%s' given to %s from %s in %s\n",
@@ -114,7 +139,7 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 	)
 
 	// Add event for reaction given
-	if err := s.BigqueryInserter.Put(ctx, SlackMessageEvent{
+	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
 		DateTime: civil.DateTimeOf(time.Now()),
 		Event:    ev.Type,
 		User:     sender.Name,
@@ -125,7 +150,7 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 	}
 
 	// Add event for reaction recieved
-	if err := s.BigqueryInserter.Put(ctx, SlackMessageEvent{
+	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
 		DateTime: civil.DateTimeOf(time.Now()),
 		Event:    "reaction_recieved",
 		User:     reciever.Name,
