@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
@@ -19,7 +20,9 @@ func main() {
 	// Load Config
 	c, err := ConfigFromEnvironment()
 	if err != nil {
-		log.Fatalf("config load failed: %s", err.Error())
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("config load failed")
 		return
 	}
 
@@ -36,7 +39,9 @@ func main() {
 	)
 
 	if err != nil {
-		log.Fatalf("NewSlackEventStorage failed: %v\n", err)
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("NewSlackEventStorage failed")
 		return
 	}
 
@@ -75,7 +80,9 @@ func main() {
 			}
 			w.Header().Set("Content-Type", "text")
 			if _, err := w.Write([]byte(r.Challenge)); err != nil {
-				log.Fatalf("HTTP response write failed with: %s\n", err.Error())
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Error("HTTP response w.write failed")
 				return
 			}
 			return
@@ -83,31 +90,54 @@ func main() {
 
 		if eventsAPIEvent.Type == slackevents.CallbackEvent {
 			innerEvent := eventsAPIEvent.InnerEvent
-			log.Printf("event recieved: %s\n", innerEvent.Type)
+			log.WithFields(log.Fields{
+				"event": innerEvent.Type,
+			}).Info("event recieved")
 
 			switch ev := innerEvent.Data.(type) {
 			case *slackevents.AppMentionEvent:
 				_, _, err := slackClient.PostMessage(ev.Channel, slack.MsgOptionText("Yes, hello.", false))
 				if err != nil {
-					log.Fatalf("AppMentionEvent response failed with: %s\n", err.Error())
-					return
+					log.WithFields(log.Fields{
+						"error": err.Error(),
+					}).Error("AppMentionEvent response failed")
 				}
 
 			case *slackevents.MessageEvent:
+				log.WithFields(log.Fields{
+					"event": fmt.Sprintf("%+v", ev),
+				}).Trace("slackevents.MessageEvent recieved")
+
 				if err := ses.MessageEvent(ev); err != nil {
-					log.Fatalf("MessageEvent failed with: %s\n", err.Error())
+					log.WithFields(log.Fields{
+						"error": err.Error(),
+					}).Error("ses.MessageEvent failed")
 				}
 
 			case *slackevents.ReactionAddedEvent:
+				log.WithFields(log.Fields{
+					"event": fmt.Sprintf("%+v", ev),
+				}).Trace("slackevents.ReactionAddedEvent recieved")
+
 				if err := ses.ReactionAddedEvent(ev); err != nil {
-					log.Fatalf("ReactionAddedEvent failed with: %s\n", err.Error())
+					log.WithFields(log.Fields{
+						"error": err.Error(),
+					}).Error("ses.ReactionAddedEvent failed")
 				}
 			}
 		}
 	})
-	fmt.Println("[INFO] Server listening")
+
+	log.WithFields(log.Fields{
+		"host": c.Host,
+		"port": c.Port,
+	}).Info("starting server")
+
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", c.Host, c.Port), nil); err != nil {
-		log.Fatalf("http.ListenAndServe failed with: %s\n", err.Error())
-		return
+		log.WithFields(log.Fields{
+			"host":  c.Host,
+			"port":  c.Port,
+			"error": err.Error(),
+		}).Fatal("http.ListenAndServe failed")
 	}
 }
