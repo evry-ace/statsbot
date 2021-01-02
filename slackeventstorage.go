@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 
@@ -83,12 +82,17 @@ func (s SlackEventStorage) MessageEvent(ev *slackevents.MessageEvent) error {
 		return err
 	}
 
-	log.Printf("message event: channel=%s, user=%s\n", channel.Name, user.Name)
+	log.WithFields(log.Fields{
+		"channel": channel.Name,
+		"sender":  user.Name,
+	}).Debug("MessageEvent recieved")
 
 	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
-		Event:    ev.Type,
-		User:     user.Name,
-		Channel:  channel.Name,
+		Event:   ev.Type,
+		User:    user.Name,
+		Channel: channel.Name,
+		// ChanelIsOpen: channel.IsOpen,
+		// MessageInTread: ev.ThreadTimeStamp != ""
 		DateTime: civil.DateTimeOf(time.Now()),
 	}); err != nil {
 		return err
@@ -115,14 +119,22 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 		return err
 	}
 
+	// Experimental detects sentiment of reaction text
 	if s.config.EnableSentiment {
-		// Detects the sentiment of the text.
 		sentiment, err := s.sentimentClient.analyze(ev.Reaction)
+
 		if err != nil {
-			log.Fatalf("Failed to analyze text: %v", err)
+			log.WithFields(log.Fields{
+				"text":  ev.Reaction,
+				"error": err.Error(),
+			}).Error("sentimentClient.analyze failed")
 		}
 
-		fmt.Printf("Sentiment score of '%v' is %f\n", ev.Reaction, sentiment.DocumentSentiment.Score)
+		log.WithFields(log.Fields{
+			"text":  ev.Reaction,
+			"score": sentiment.DocumentSentiment.Score,
+		}).Debug("sentimentClient.analyze")
+
 		//if sentiment.DocumentSentiment.Score >= 0 {
 		//	fmt.Println("Sentiment: positive")
 		//} else {
@@ -130,13 +142,11 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 		//}
 	}
 
-	fmt.Printf(
-		"Recieved '%s' given to %s from %s in %s\n",
-		ev.Reaction,
-		reciever.Name,
-		sender.Name,
-		channel.Name,
-	)
+	log.WithFields(log.Fields{
+		"reaction": ev.Reaction,
+		"sender":   sender.Name,
+		"reciever": reciever.Name,
+	}).Debug("reaction recieved")
 
 	// Add event for reaction given
 	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
