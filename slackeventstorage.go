@@ -13,21 +13,25 @@ import (
 )
 
 type SlackMessageEvent struct {
-	DateTime civil.DateTime
-	Event    string
-	User     string
-	Channel  string
-	Reaction string
+	DateTime  civil.DateTime
+	Event     string
+	User      string
+	Channel   string
+	MessageID string
+	ParentID  string
+	Reaction  string
 }
 
 // Save implements the ValueSaver interface.
 func (i *SlackMessageEvent) Save() (map[string]bigquery.Value, string, error) {
 	return map[string]bigquery.Value{
-		"datetime": i.DateTime,
-		"event":    i.Event,
-		"user":     i.User,
-		"channel":  i.Channel,
-		"reaction": i.Reaction,
+		"datetime":  i.DateTime,
+		"event":     i.Event,
+		"user":      i.User,
+		"channel":   i.Channel,
+		"messageid": i.MessageID,
+		"parentid":  i.ParentID,
+		"reaction":  i.Reaction,
 	}, bigquery.NoDedupeID, nil
 }
 
@@ -70,6 +74,12 @@ func NewSlackEventStorage(
 }
 
 func (s SlackEventStorage) MessageEvent(ev *slackevents.MessageEvent) error {
+	// Ignore message_changed events, for some reason they are sent when you post
+	// to a thread and tick the "send to channel" checkbox
+	if ev.SubType == "message_changed" {
+		return nil
+	}
+
 	ctx := context.Background()
 
 	user, err := s.slackClient.GetUserInfoContext(ctx, ev.User)
@@ -93,6 +103,18 @@ func (s SlackEventStorage) MessageEvent(ev *slackevents.MessageEvent) error {
 		Channel: channel.Name,
 		// ChanelIsOpen: channel.IsOpen,
 		// MessageInTread: ev.ThreadTimeStamp != ""
+
+		// The TimeStamp value is essentially the ID of the message, guaranteed
+		// unique within the context of a channel or conversation.  They look like
+		// UNIX/epoch timestamps, hence TimeStamp, with specified milliseconds.
+		// They'll even sort like the same. But they're message IDs, even if they're
+		// partially composed in seconds-since-the-epoch.  The TimeStamp of a
+		// message can be used in many operations such as replying to it in a
+		// thread, or modifying the message. But it can also be used to retrieve the
+		// message by itself.
+		MessageID: ev.TimeStamp,
+		ParentID:  ev.ThreadTimeStamp,
+
 		DateTime: civil.DateTimeOf(time.Now()),
 	}); err != nil {
 		return err
@@ -150,22 +172,24 @@ func (s SlackEventStorage) ReactionAddedEvent(ev *slackevents.ReactionAddedEvent
 
 	// Add event for reaction given
 	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
-		DateTime: civil.DateTimeOf(time.Now()),
-		Event:    ev.Type,
-		User:     sender.Name,
-		Channel:  channel.Name,
-		Reaction: ev.Reaction,
+		DateTime:  civil.DateTimeOf(time.Now()),
+		Event:     ev.Type,
+		User:      sender.Name,
+		Channel:   channel.Name,
+		MessageID: ev.Item.Timestamp,
+		Reaction:  ev.Reaction,
 	}); err != nil {
 		return err
 	}
 
 	// Add event for reaction recieved
 	if err := s.bigqueryInserter.Put(ctx, SlackMessageEvent{
-		DateTime: civil.DateTimeOf(time.Now()),
-		Event:    "reaction_recieved",
-		User:     reciever.Name,
-		Channel:  channel.Name,
-		Reaction: ev.Reaction,
+		DateTime:  civil.DateTimeOf(time.Now()),
+		Event:     "reaction_recieved",
+		User:      reciever.Name,
+		Channel:   channel.Name,
+		MessageID: ev.Item.Timestamp,
+		Reaction:  ev.Reaction,
 	}); err != nil {
 		return err
 	}

@@ -8,6 +8,8 @@ func setupLogging() {
 	c, _ := ConfigFromEnvironment()
 
 	switch c.LogLevel {
+	case "trace":
+		logrus.SetLevel(logrus.TraceLevel)
 	case "debug":
 		logrus.SetLevel(logrus.DebugLevel)
 	case "info":
