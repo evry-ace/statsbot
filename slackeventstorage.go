@@ -70,6 +70,12 @@ func NewSlackEventStorage(
 }
 
 func (s SlackEventStorage) MessageEvent(ev *slackevents.MessageEvent) error {
+	// Ignore message_changed events, for some reason they are sent when you post
+	// to a thread and tick the "send to channel" checkbox
+	if ev.SubType == "message_changed" {
+		return nil
+	}
+
 	ctx := context.Background()
 
 	user, err := s.slackClient.GetUserInfoContext(ctx, ev.User)
