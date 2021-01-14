@@ -19,6 +19,6 @@ require (
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 // indirect
 	golang.org/x/tools v0.0.0-20201230224404-63754364767c // indirect
-	google.golang.org/genproto v0.0.0-20210111234610-22ae2b108f89
+	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f
 	honnef.co/go/tools v0.1.0 // indirect
 )
