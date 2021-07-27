@@ -16,6 +16,6 @@ require (
 	github.com/slack-go/slack v0.8.0
 	github.com/spf13/viper v1.8.1
 	golang.org/x/exp v0.0.0-20201221025956-e89b829e73ea // indirect
-	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
+	google.golang.org/genproto v0.0.0-20210726200206-e7812ac95cc0
 	honnef.co/go/tools v0.1.0 // indirect
 )
