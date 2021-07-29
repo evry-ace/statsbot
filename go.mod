@@ -3,7 +3,7 @@ module github.com/evry-ace/statsbot
 go 1.15
 
 require (
-	cloud.google.com/go v0.88.0
+	cloud.google.com/go v0.89.0
 	cloud.google.com/go/bigquery v1.14.0
 	github.com/bobbytables/slacker v0.0.0-20160121193732-0a05912e400e
 	github.com/gorilla/websocket v1.4.2 // indirect
