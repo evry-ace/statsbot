@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sdming/gosnow v0.0.0-20130403030620-3a05c415e886 // indirect
 	github.com/sirupsen/logrus v1.8.1
-	github.com/slack-go/slack v0.9.4
+	github.com/slack-go/slack v0.10.2
 	github.com/spf13/viper v1.10.1
 	golang.org/x/exp v0.0.0-20201221025956-e89b829e73ea // indirect
 	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf
