@@ -10,7 +10,7 @@ require (
 	github.com/bobbytables/slacker v0.0.0-20160121193732-0a05912e400e
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/joho/godotenv v1.3.0
+	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sdming/gosnow v0.0.0-20130403030620-3a05c415e886 // indirect
